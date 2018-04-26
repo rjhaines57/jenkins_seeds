@@ -6,7 +6,7 @@ job('openmrs') {
     }
     steps {
 		copyArtifacts('seed-job') {
-            includePatterns('auto_triage')
+            includePatterns('auto_triage/openmrs.csv')
             buildSelector {
                 latestSuccessful(true)
             }

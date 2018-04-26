@@ -5,7 +5,7 @@ job('openmrs') {
     triggers {
     }
     steps {
-		copyArtifacts('upstream') {
+		copyArtifacts('seed-job') {
             includePatterns('auto_triage')
             buildSelector {
                 latestSuccessful(true)

@@ -5,6 +5,11 @@ job('openmrs') {
     triggers {
     }
     steps {
+		copyArtifacts('upstream') {
+            includePatterns('auto_triage')
+            buildSelector {
+                latestSuccessful(true)
+            }
         shell('''#!/bin/bash
 
 # Fixed configuration from the container. DO NOT CHANGE
@@ -28,7 +33,9 @@ CONFIGURE="java javascript"
 
 . ${COV_HOME}/build_helper.sh
 ''')
-    }
+    
+	
+	}
  
 }
 

@@ -10,6 +10,7 @@ job('openmrs') {
             buildSelector {
                 latestSuccessful(true)
             }
+		}
         shell('''#!/bin/bash
 
 # Fixed configuration from the container. DO NOT CHANGE

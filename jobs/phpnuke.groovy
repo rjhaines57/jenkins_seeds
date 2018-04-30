@@ -5,20 +5,14 @@ job('phpnuke') {
     triggers {
     }
     steps {
-		copyArtifacts('seed-job') {
-            includePatterns('auto_triage/openmrs.csv')
-            buildSelector {
-                latestSuccessful(true)
-            }
-		}
-        shell('''#!/bin/bash
+		shell('''#!/bin/bash
 
 # Fixed configuration from the container. DO NOT CHANGE
 COV_HOME=/opt/coverity
 
 
 #configuration for this recipe
-PROJECT=openmrs
+PROJECT=phpnuke
 STREAM=${PROJECT}
 REPO=https://github.com/phpnuke/phpnuke.git
 FS_CAPTURE_SEARCH="."

@@ -1,15 +1,21 @@
-#!/bin/bash
+job('cudu') {
+    scm {
+        
+    }
+    triggers {
+    }
+    steps {
+		shell('''#!/bin/bash
 
 # Fixed configuration from the container. DO NOT CHANGE
 COV_HOME=/opt/coverity
 
 
 #configuration for this recipe
-PROJECT=openmrs
+PROJECT=cudu
 STREAM=${PROJECT}
 REPO=https://github.com/fev/cudu.git
 WAR=webapp/target/*.war
-BUILD_COMMAND="mvn clean install -Dmaven.test.skip=true"
 FS_CAPTURE_SEARCH="backend frontend"
 
 #Language/Compiler Selection
@@ -19,3 +25,11 @@ FS_CAPTURE_SEARCH="backend frontend"
 CONFIGURE="java javascript"
 
 . ${COV_HOME}/build_helper.sh
+''')
+    
+	
+	}
+ 
+}
+
+queue('cudu')

@@ -20,8 +20,8 @@ COV_HOME=/opt/coverity
 #configuration for this recipe
 PROJECT=openmrs
 STREAM=${PROJECT}
-REPO=https://github.com/turnkeylinux-apps/phpnuke.git
-FS_CAPTURE_SEARCH="webapp/src"
+REPO=https://github.com/phpnuke/phpnuke.git
+FS_CAPTURE_SEARCH="."
 
 #Language/Compiler Selection
 #Choose from: java javascript python php gcc clang ruby swift scala vb

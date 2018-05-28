@@ -23,7 +23,7 @@ node {
             docker.image('cov-analysis:2018.03').withRun('--hostname \${BUILD_TAG} -v '+volumeId+':/opt/coverity/idirs -v coverity_tools:/opt/coverity --name wibble') { c ->
                 docker.image('gcc:5.5.0').inside('--hostname \${BUILD_TAG} -v '+volumeId+':/opt/coverity/idirs -v maven:/root/.m2 -v coverity_tools:/opt/coverity:ro') { 
                     sh '/opt/coverity/analysis/bin/cov-configure --config /opt/coverity/idirs/coverity_config.xml --gcc'
-                    sh '/opt/coverity/analysis/bin/cov-build --dir /opt/coverity/idirs/idir  --config /opt/coverity/idirs/coverity_config.xml make -j auto '            
+                    sh '/opt/coverity/analysis/bin/cov-build --dir /opt/coverity/idirs/idir  --config /opt/coverity/idirs/coverity_config.xml make -j'            
                 }            
             }
         }

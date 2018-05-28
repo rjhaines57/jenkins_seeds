@@ -10,27 +10,32 @@ node {
     
         stage('Setup idir')
         {
-	   //	copyArtifacts filter: 'auto_triage/openmrs.csv', fingerprintArtifacts: true, projectName: 'seed-job', selector: lastSuccessful()    
-        deleteDir()    
+	    //copyArtifacts filter: '/openmrs.csv', fingerprintArtifacts: true, projectName: 'seed-job', selector: lastSuccessful()    
+        //deleteDir()    
         volumeId=sh(returnStdout: true, script: '/usr/bin/docker volume create').trim() 
         }
         stage('Clone sources') {
           git url: 'https://github.com/PolySync/oscc.git'
         }
+        stage('Create helper image')
+        {
+            sh 'echo \"FROM gcc:5.5.0\" > Dockerfile'
+            sh 'echo \"RUN apt-get update && apt-get install -y arduino-core build-essential cmake\" >> Dockerfile'
+            docker.build("oscc-build:latest")
+        }
         stage('Build (C++)') {
       
             docker.image('cov-analysis:2018.03').withRun('--hostname \${BUILD_TAG} -v '+volumeId+':/opt/coverity/idirs -v coverity_tools:/opt/coverity --name wibble') { c ->
-                docker.image('gcc:5.5.0').inside('--hostname \${BUILD_TAG} -v '+volumeId+':/opt/coverity/idirs  -v coverity_tools:/opt/coverity:ro') { 
-					sh 'apt-get update && apt install arduino-core build-essential cmake'
-					sh 'cd firmware && mkdir build && cd build && cmake .. -DKIA_SOUL=ON'
-                    sh '/opt/coverity/analysis/bin/cov-configure --config /opt/coverity/idirs/coverity_config.xml --gcc'
-                    sh '/opt/coverity/analysis/bin/cov-build --dir /opt/coverity/idirs/idir  --config /opt/coverity/idirs/coverity_config.xml make -j -C firmware/build'            
+                docker.image('oscc-build:latest').inside('--hostname \${BUILD_TAG} -v '+volumeId+':/opt/coverity/idirs  -v coverity_tools:/opt/coverity:ro') { 
+					sh 'cd firmware && rm -rf build && mkdir build && cd build && cmake .. -DKIA_SOUL=ON'
+                    sh '/opt/coverity/analysis/bin/cov-configure --config /opt/coverity/idirs/coverity_config.xml --compiler avr-gcc --comptype gcc --template'
+                    sh '/opt/coverity/analysis/bin/cov-build --dir /opt/coverity/idirs/idir --emit-complementary-info   --config /opt/coverity/idirs/coverity_config.xml make -j -C firmware/build'            
                 }            
             }
         }
         stage('Analysis') {
             docker.image('cov-analysis:2018.03').inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 -v '+volumeId+':/opt/coverity/idirs') {
-                sh '/opt/coverity/analysis/bin/cov-analyze --dir /opt/coverity/idirs/idir --trial'
+                sh '/opt/coverity/analysis/bin/cov-analyze --dir /opt/coverity/idirs/idir --trial --misra-config /opt/coverity/analysis/config/MISRA/MISRA_cpp2008_7.config'
             }
         }
         stage('Commit') {
@@ -47,10 +52,9 @@ node {
     stage('cleanup volume') {
         // Comment out this to keep the idir volume
 		sh 'docker volume rm '+volumeId
-    }
+		}
     }
 }
-      
 	  """.stripIndent())      
     }
   }

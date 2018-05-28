@@ -42,6 +42,6 @@ node {
     }
   }
 }
-
+if (!jenkins.model.Jenkins.instance.getItemByFullName('NotePad++')) {
  queue('NotePad++')
-
+}

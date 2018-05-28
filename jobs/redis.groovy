@@ -54,6 +54,6 @@ node {
     }
   }
 }
-
+if (!jenkins.model.Jenkins.instance.getItemByFullName('Redis')) {
  queue('Redis')
-
+}

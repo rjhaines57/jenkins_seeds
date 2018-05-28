@@ -53,6 +53,6 @@ node {
     }
   }
 }
-
- queue('openMRS')
-
+if (!jenkins.model.Jenkins.instance.getItemByFullName('OpenMRS')) {
+ queue('OpenMRS')
+}

@@ -50,6 +50,6 @@ node {
     }
   }
 }
-
+if (!jenkins.model.Jenkins.instance.getItemByFullName('PHPNuke')) {
  queue('PHPNuke')
-
+}

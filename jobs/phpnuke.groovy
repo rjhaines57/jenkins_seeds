@@ -21,7 +21,7 @@ node {
       
             docker.image('cov-analysis:2018.03').inside('--hostname \${BUILD_TAG} -v '+volumeId+':/opt/coverity/idirs -v coverity_tools:/opt/coverity') { 
                 sh '/opt/coverity/analysis/bin/cov-configure --config /opt/coverity/idirs/coverity_config.xml --php'
-                sh '/opt/coverity/analysis/bin/cov-build --dir /opt/coverity/idirs/idir --no-command --fs-capture-search .'            
+                sh '/opt/coverity/analysis/bin/cov-build --dir /opt/coverity/idirs/idir --config /opt/coverity/idirs/coverity_config.xml --no-command --fs-capture-search .'            
             }
         }
         stage('Analysis') {

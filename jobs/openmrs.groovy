@@ -41,9 +41,9 @@ node {
                 }
             }
         }
-		stage('Coverity Results') {
-            coverityResults connectInstance: 'Test Server', connectView: 'Outstanding Security Risks', projectId: 'OpenMRS', unstable:true
-        }
+	//	stage('Coverity Results') {
+    //        coverityResults connectInstance: 'Test Server', connectView: 'Outstanding Security Risks', projectId: 'OpenMRS', unstable:true
+    //    }
 		
     }
     finally

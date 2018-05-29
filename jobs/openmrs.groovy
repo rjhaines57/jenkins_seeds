@@ -44,6 +44,7 @@ node {
 		stage('Coverity Results') {
             coverityResults connectInstance: 'Test Server', connectView: 'Outstanding Security Defects', projectId: 'OpenMRS', unstable:true
         }
+		
     }
     finally
     {

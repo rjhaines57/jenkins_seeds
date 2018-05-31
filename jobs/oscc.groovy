@@ -25,7 +25,7 @@ node {
         }
         stage('Build (C++)') {
       
-            docker.image('cov-analysis:2018.03').withRun('--hostname \${BUILD_TAG} -v '+volumeId+':/opt/coverity/idirs -v coverity_tools:/opt/coverity --name wibble') { c ->
+            docker.image('clittlej/sig-emea-ses:analysis-2018.03').withRun('--hostname \${BUILD_TAG} -v '+volumeId+':/opt/coverity/idirs -v coverity_tools:/opt/coverity') { c ->
                 docker.image('oscc-build:latest').inside('--hostname \${BUILD_TAG} -v '+volumeId+':/opt/coverity/idirs  -v coverity_tools:/opt/coverity:ro') { 
 					sh 'cd firmware && rm -rf build && mkdir build && cd build && cmake .. -DKIA_SOUL=ON'
                     sh '/opt/coverity/analysis/bin/cov-configure --config /opt/coverity/idirs/coverity_config.xml --compiler avr-gcc --comptype gcc --template'
@@ -34,13 +34,13 @@ node {
             }
         }
         stage('Analysis') {
-            docker.image('cov-analysis:2018.03').inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 -v '+volumeId+':/opt/coverity/idirs') {
+            docker.image('clittlej/sig-emea-ses:analysis-2018.03').inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 -v '+volumeId+':/opt/coverity/idirs') {
                 sh '/opt/coverity/analysis/bin/cov-analyze --dir /opt/coverity/idirs/idir --trial --misra-config /opt/coverity/analysis/config/MISRA/MISRA_cpp2008_7.config'
             }
         }
         stage('Commit') {
            withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
-                docker.image('cov-analysis:2018.03').inside('--network docker_coverity --hostname \${BUILD_TAG}  --mac-address 08:00:27:ee:25:b2 -v '+volumeId+':/opt/coverity/idirs -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSPHRASE=\${COV_PASSPHRASE}') {
+                docker.image('clittlej/sig-emea-ses:analysis-2018.03').inside('--network docker_coverity --hostname \${BUILD_TAG}  --mac-address 08:00:27:ee:25:b2 -v '+volumeId+':/opt/coverity/idirs -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSPHRASE=\${COV_PASSPHRASE}') {
                     sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password coverity --project OSCC --stream oscc'
                     sh '/opt/coverity/analysis/bin/cov-commit-defects --dir /opt/coverity/idirs/idir --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream oscc'
                 }

@@ -50,6 +50,6 @@ node {
     }
   }
 }
-if (!jenkins.model.Jenkins.instance.getItemByFullName('NotePad++')) {
+if (!jenkins.model.Jenkins.instance.getItemByFullName('NotePad++')&& System.getenv("AUTO_RUN")) {
  queue('NotePad++')
 }

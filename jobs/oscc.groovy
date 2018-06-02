@@ -59,6 +59,6 @@ node {
     }
   }
 }
-if (!jenkins.model.Jenkins.instance.getItemByFullName('Redis')) {
+if (!jenkins.model.Jenkins.instance.getItemByFullName('oscc') && System.getenv("AUTO_RUN") ) {
  queue('oscc')
 }

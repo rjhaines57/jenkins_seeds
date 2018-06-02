@@ -59,6 +59,6 @@ node {
     }
   }
 }
-if (!jenkins.model.Jenkins.instance.getItemByFullName('megamek')) {
+if (!jenkins.model.Jenkins.instance.getItemByFullName('megamek') && System.getenv("AUTO_RUN")) {
  queue('megamek')
 }

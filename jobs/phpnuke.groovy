@@ -51,6 +51,6 @@ node {
     }
   }
 }
-if (!jenkins.model.Jenkins.instance.getItemByFullName('PHPNuke')) {
+if (!jenkins.model.Jenkins.instance.getItemByFullName('PHPNuke') && System.getenv("AUTO_RUN")) {
  queue('PHPNuke')
 }

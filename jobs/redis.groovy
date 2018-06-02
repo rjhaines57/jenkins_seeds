@@ -6,6 +6,7 @@ pipelineJob('Redis') {
 
 node {
     def volumeId
+    def analysis_image="clittlej/sig-emea-ses:analysis-2018.03"
     try {
     
         stage('Setup idir')
@@ -20,36 +21,42 @@ node {
         }
         stage('Build (C++)') {
       
-            docker.image('clittlej/sig-emea-ses:analysis-2018.03').withRun('--hostname \${BUILD_TAG} -v '+volumeId+':/opt/coverity/idirs -v coverity_tools:/opt/coverity) { c ->
-                docker.image('gcc:5.5.0').inside('--hostname \${BUILD_TAG} -v '+volumeId+':/opt/coverity/idirs -v maven:/root/.m2 -v coverity_tools:/opt/coverity:ro') { 
+            docker.image(analysis_image).withRun('--hostname \${BUILD_TAG} -v \${BUILD_TAG}:/opt/coverity') { 
+                docker.image('gcc:5.5.0').inside('--hostname \${BUILD_TAG} -v \${BUILD_TAG}:/opt/coverity') { 
                     sh '/opt/coverity/analysis/bin/cov-configure --config /opt/coverity/idirs/coverity_config.xml --gcc'
-                    sh '/opt/coverity/analysis/bin/cov-build --dir /opt/coverity/idirs/idir  --config /opt/coverity/idirs/coverity_config.xml make -j'            
+                    sh '/opt/coverity/analysis/bin/cov-build --dir /opt/coverity/idirs/idir --config /opt/coverity/idirs/coverity_config.xml make -j'            
+                    sh '/opt/coverity/analysis/bin/cov-import-scm --dir /opt/coverity/idirs/idir --scm git --filename-regex \${WORKSPACE}'
                 }            
             }
         }
 		
         stage('Analysis') {
-            docker.image('clittlej/sig-emea-ses:analysis-2018.03').inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 -v '+volumeId+':/opt/coverity/idirs') {
-                sh '/opt/coverity/analysis/bin/cov-analyze --dir /opt/coverity/idirs/idir --trial'
+            docker.image(analysis_image).inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 -v \${BUILD_TAG}:/opt/coverity') {
+                sh '/opt/coverity/analysis/bin/cov-analyze --strip-path \${WORKSPACE} --dir /opt/coverity/idirs/idir --trial'
             }
         }
         stage('Commit') {
            withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
-                docker.image('clittlej/sig-emea-ses:analysis-2018.03').inside('--network docker_coverity --hostname \${BUILD_TAG}  --mac-address 08:00:27:ee:25:b2 -v '+volumeId+':/opt/coverity/idirs -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSPHRASE=\${COV_PASSPHRASE}') {
-                    sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password coverity --project Redis --stream redis'
-                    sh '/opt/coverity/analysis/bin/cov-commit-defects --dir /opt/coverity/idirs/idir --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream redis'
+                docker.image(analysis_image).inside('--network docker_coverity --hostname \${BUILD_TAG}  --mac-address 08:00:27:ee:25:b2 -v \${BUILD_TAG}:/opt/coverity/ -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSPHRASE=\${COV_PASSPHRASE}') {
+                    sh 'python /opt/coverity/cov_tools/coverity_jenkins_tools/createProjectAndStream.py --host \${COVERITY_HOST} --user \${COV_USER} --password coverity --project Redis --stream redis'
+                    sh '/opt/coverity/analysis/bin/cov-commit-defects --dir /opt/coverity/idirs/idir --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream redis'
                 }
             }
         }
+    }
+    catch (err){
+      echo "Found error"
     }
     finally
     {
     stage('cleanup volume') {
         // Comment out this to keep the idir volume
-		sh 'docker volume rm '+volumeId
+		sh 'docker volume rm '+volumeId+' \${BUILD_TAG}'
     }
     }
 }
+      
+	  
       
 	  """.stripIndent())      
     }

@@ -1,18 +1,17 @@
-pipelineJob('OpenMRS') {
+pipelineJob('Jenkins') {
   definition {
     cps {
       sandbox()
       script("""
 node {
     def volumeId
- 
+    def idir_volume=\${BUILD_TAG}
     try {
     
         stage('Clean directory')
         {
 		copyArtifacts filter: 'auto_triage/openmrs.csv', fingerprintArtifacts: true, projectName: 'seed-job', selector: lastSuccessful()    
-        deleteDir()  
-         
+        //  deleteDir()    
         }
         stage('Clone sources') {
             git url: 'https://github.com/openmrs/openmrs-core.git'
@@ -21,9 +20,8 @@ node {
         stage('Build (Java & Javascript)') {
       
             docker.image('clittlej/sig-emea-ses:analysis-2018.03').withRun('--hostname \${BUILD_TAG} -v \${BUILD_TAG}:/opt/coverity') { c ->
-                docker.image('maven:3.5.3-jdk-8').inside('--hostname \${BUILD_TAG} -e HOME=\${WORKSPACE} -v /var/jenkins_home/.m2:\${WORKSPACE}/.m2 -v \${BUILD_TAG}:/opt/coverity') { 
+                docker.image('maven:3.5.3-jdk-8').inside('--hostname \${BUILD_TAG} -e HOME=\${WORKSPACE} -v maven:\${WORKSPACE}/.m2 -v \${BUILD_TAG}:/opt/coverity') { 
                     stage('Build'){
-                        sh 'ls -al \${HOME}'
                         sh '/opt/coverity/analysis/bin/cov-configure --config /opt/coverity/idirs/coverity_config.xml --java'
                         sh '/opt/coverity/analysis/bin/cov-configure --config /opt/coverity/idirs/coverity_config.xml --javascript'                
                         sh '/opt/coverity/analysis/bin/cov-build --dir /opt/coverity/idirs/idir  --config /opt/coverity/idirs/coverity_config.xml mvn -Duser.home=\${HOME} -DskipTests=true -Dmaven.compiler.forceJavacCompilerUse=true -Dlicense.skip=true clean install  '            
@@ -53,17 +51,16 @@ node {
     }
     finally
     {
-    stage('cleanup volume') {
-		// Delete volume
-		sh 'docker volume rm \${BUILD_TAG}'
-		}
+        stage('cleanup volume') {
+            // Delete volume
+            sh 'docker volume rm \${BUILD_TAG}'
+        }
     }
 }
-      
-      """.stripIndent())      
+      	  """.stripIndent())      
     }
   }
 }
-if (!jenkins.model.Jenkins.instance.getItemByFullName('OpenMRS') && System.getenv("AUTO_RUN")) {
-  queue('OpenMRS')
+if (!jenkins.model.Jenkins.instance.getItemByFullName('Jenkins') && System.getenv("AUTO_RUN")) {
+ queue('Jenkins')
 }

@@ -36,7 +36,7 @@ node {
 					docker.image('oscc-build:latest').inside('--hostname \${BUILD_TAG}   -v '+volumeName+':/opt/coverity:ro') { 
 						sh 'cd firmware && rm -rf build && mkdir build && cd build && cmake .. -DKIA_SOUL=ON'
 						sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --compiler avr-gcc --comptype gcc --template'
-						sh '/opt/coverity/analysis/bin/cov-build '+idir+' --emit-complementary-info   --config '+config+' make -j -C firmware/build'    
+						sh '/opt/coverity/analysis/bin/cov-build --dir '+idir+' --emit-complementary-info   --config '+config+' make -j -C firmware/build'    
 						try {
 							sh '/opt/coverity/analysis/bin/cov-import-scm --dir '+idir+' --scm git --filename-regex \${WORKSPACE}'
 						}
@@ -47,14 +47,14 @@ node {
         }
         stage('Analysis') {
             docker.image(analysis_image).inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 ') {
-                sh '/opt/coverity/analysis/bin/cov-analyze '+idir+' --trial --misra-config /opt/coverity/analysis/config/MISRA/MISRA_cpp2008_7.config'
+                sh '/opt/coverity/analysis/bin/cov-analyze --dir '+idir+' --trial --misra-config /opt/coverity/analysis/config/MISRA/MISRA_cpp2008_7.config'
             }
         }
         stage('Commit') {
            withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
                 docker.image(analysis_image).inside('--network docker_coverity --hostname \${BUILD_TAG}  --mac-address 08:00:27:ee:25:b2  -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSWORD=\${COV_PASSWORD}') {
                     sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password \${COVERITY} --project OSCC --stream oscc'
-                    sh '/opt/coverity/analysis/bin/cov-commit-defects '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream oscc'
+                    sh '/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream oscc'
                 }
             }
         }

@@ -21,14 +21,14 @@ node {
 			docker.withRegistry('','docker_credentials') { 
 				docker.image(analysis_image).inside('--hostname \${BUILD_TAG}  -v '+volumeName+':/opt/coverity') { 
 					sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --php'
-					sh '/opt/coverity/analysis/bin/cov-build '+idir+' --config '+config+' --no-command --fs-capture-search .'            
+					sh '/opt/coverity/analysis/bin/cov-build --dir '+idir+' --config '+config+' --no-command --fs-capture-search .'            
 				}
 			}
         }
         stage('Analysis') {
             docker.withRegistry('','docker_credentials') {  		
 				docker.image(analysis_image).inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 ') {
-					sh '/opt/coverity/analysis/bin/cov-analyze '+idir+' --trial --webapp-security-trial'
+					sh '/opt/coverity/analysis/bin/cov-analyze --dir '+idir+' --trial --webapp-security-trial'
 				}
 			}
         }
@@ -36,7 +36,7 @@ node {
            withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
                 docker.image(analysis_image).inside('--network docker_coverity --hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2  -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSWORD=\${COV_PASSWORD}') {
                     sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password \${COVERITY} --project PHPNuke --stream phpnuke'
-                    sh '/opt/coverity/analysis/bin/cov-commit-defects '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream phpnuke'
+                    sh '/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream phpnuke'
                 }
             }
         }

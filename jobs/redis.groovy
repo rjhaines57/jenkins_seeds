@@ -7,7 +7,7 @@ node {
     // Set volume Name to \${BUILD_TAG} for each build gives new volume and therefore clean
     // environment. Use \${JOB_NAME} for incremental builds
     def volumeName='\${BUILD_TAG}'
-    def analysis_image="\${DEFAULT_ANALYSIS_TAG}-\${DEFAULT_ANALYSIS_VERSION}"
+    def analysis_image="\${DEFAULT_ANALYSIS_TAG}:\${DEFAULT_ANALYSIS_VERSION}"
 	def idir_base='/opt/coverity/idirs'
 	def idir=idir_base+'/idir'
 	def config=idir_base+'/coverity_config.xml'

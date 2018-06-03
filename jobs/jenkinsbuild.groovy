@@ -19,11 +19,11 @@ node {
         stage('Build (Java & Javascript)') {
             docker.withRegistry('','docker_credentials') {  
 				docker.image(analysis_image).withRun('--hostname \${BUILD_TAG} -v '+volumeName+':/opt/coverity') { c ->
-					docker.image('maven:3.5.3-jdk-8').inside('--hostname \${BUILD_TAG} -e HOME=\${WORKSPACE} -v maven:\${WORKSPACE}/.m2 -v '+volumeName+':/opt/coverity') { 
+					docker.image('maven:3.5.3-jdk-8').inside('--hostname \${BUILD_TAG} -e HOME=\${WORKSPACE} -v '+volumeName+':/opt/coverity') { 
 						stage('Build'){
 							sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --java'
 							sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --javascript'   
-							sh '/opt/coverity/analysis/bin/cov-build --dir '+idir+'  --config '+config+' mvn -Duser.home=\${HOME} -DskipTests=true -Dmaven.compiler.forceJavacCompilerUse=true -Dlicense.skip=true clean install  '            
+							sh '/opt/coverity/analysis/bin/cov-build --dir '+idir+'  --config '+config+' mvn -DskipTests=true -Dmaven.compiler.forceJavacCompilerUse=true -Dlicense.skip=true clean install  '            
 							sh '/opt/coverity/analysis/bin/cov-build --dir '+idir+' --config '+config+' --no-command --fs-capture-search war/src'  
 							try {
 								sh '/opt/coverity/analysis/bin/cov-import-scm --dir '+idir+' --scm git --filename-regex \${WORKSPACE}'

@@ -29,8 +29,8 @@ node {
             docker.withRegistry('','docker_credentials') {        
 				docker.image(analysis_image).withRun('--hostname \${BUILD_TAG}  -v '+volumeName+':/opt/coverity') { c ->
 					docker.image('webratio/ant').inside('--hostname \${BUILD_TAG}  -v '+volumeName+':/opt/coverity:ro -e JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8') { 
-						sh '/opt/coverity/analysis/bin/cov-configure '+config+' --java'
-						sh '/opt/coverity/analysis/bin/cov-build '+idir+'  '+config+' ant'     
+						sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --java'
+						sh '/opt/coverity/analysis/bin/cov-build '+idir+'  --config '+config+' ant'     
 						try {
 							sh '/opt/coverity/analysis/bin/cov-import-scm --dir '+idir+' --scm git --filename-regex \${WORKSPACE}'
 						}
@@ -61,7 +61,7 @@ node {
     {
     stage('cleanup volume') {
     // Delete volume
-    sh 'docker volume rm '+volumeId
+    sh 'docker volume rm'+volumeName
     }
     }
 }

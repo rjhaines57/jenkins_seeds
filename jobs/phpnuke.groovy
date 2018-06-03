@@ -20,8 +20,8 @@ node {
         stage('Build (php)') {
 			docker.withRegistry('','docker_credentials') { 
 				docker.image(analysis_image).inside('--hostname \${BUILD_TAG}  -v '+volumeName+':/opt/coverity') { 
-					sh '/opt/coverity/analysis/bin/cov-configure '+config+' --php'
-					sh '/opt/coverity/analysis/bin/cov-build '+idir+' '+config+' --no-command --fs-capture-search .'            
+					sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --php'
+					sh '/opt/coverity/analysis/bin/cov-build '+idir+' --config '+config+' --no-command --fs-capture-search .'            
 				}
 			}
         }

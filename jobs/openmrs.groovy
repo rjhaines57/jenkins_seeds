@@ -23,13 +23,13 @@ node {
         }
         stage('Build (Java & Javascript)') {
             docker.withRegistry('','docker_credentials') {  
-				docker.image(analysis_image).withRun('--hostname \${BUILD_TAG} -v \${BUILD_TAG}:/opt/coverity') { c ->
-					docker.image('maven:3.5.3-jdk-8').inside('--hostname \${BUILD_TAG} -e HOME=\${WORKSPACE} -v /var/jenkins_home/.m2:\${WORKSPACE}/.m2 -v \${BUILD_TAG}:/opt/coverity') { 
+				docker.image(analysis_image).withRun('--hostname \${BUILD_TAG} -v '+volumeName+':/opt/coverity') { c ->
+					docker.image('maven:3.5.3-jdk-8').inside('--hostname \${BUILD_TAG} -e HOME=\${WORKSPACE} -v '+volumeName+':/opt/coverity') { 
 						stage('Build'){
 							sh 'ls -al \${HOME}'
 							sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --java'
 							sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --javascript'                
-							sh '/opt/coverity/analysis/bin/cov-build --dir '+idir+'  --config '+config+' mvn -Duser.home=\${HOME} -DskipTests=true -Dmaven.compiler.forceJavacCompilerUse=true -Dlicense.skip=true clean install  '            
+							sh '/opt/coverity/analysis/bin/cov-build --dir '+idir+'  --config '+config+' mvn -DskipTests=true -Dmaven.compiler.forceJavacCompilerUse=true -Dlicense.skip=true clean install  '            
 							sh '/opt/coverity/analysis/bin/cov-build --dir '+idir+' --config '+config+' --no-command --fs-capture-search webapp/src'  
 							try {
 								sh '/opt/coverity/analysis/bin/cov-import-scm --dir '+idir+' --scm git --filename-regex \${WORKSPACE}'
@@ -48,7 +48,7 @@ node {
         }
         stage('Commit') {
            withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
-                docker.image(analysis_image).inside(' --hostname \${BUILD_TAG} --network docker_coverity --mac-address 08:00:27:ee:25:b2 -v \${BUILD_TAG}:/opt/coverity -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSWORD=\${COV_PASSWORD}') {
+                docker.image(analysis_image).inside(' --hostname \${BUILD_TAG} --network docker_coverity --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSWORD=\${COV_PASSWORD}') {
                     sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password \${COVERITY_PASSWORD} --project OpenMRS --stream openmrs'
                     sh '/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream openmrs'
                 }

@@ -35,8 +35,8 @@ node {
 				docker.image(analysis_image).withRun('--hostname \${BUILD_TAG}  -v '+volumeName+':/opt/coverity') { c ->
 					docker.image('oscc-build:latest').inside('--hostname \${BUILD_TAG}   -v '+volumeName+':/opt/coverity:ro') { 
 						sh 'cd firmware && rm -rf build && mkdir build && cd build && cmake .. -DKIA_SOUL=ON'
-						sh '/opt/coverity/analysis/bin/cov-configure '+config+' --compiler avr-gcc --comptype gcc --template'
-						sh '/opt/coverity/analysis/bin/cov-build '+idir+' --emit-complementary-info   '+config+' make -j -C firmware/build'    
+						sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --compiler avr-gcc --comptype gcc --template'
+						sh '/opt/coverity/analysis/bin/cov-build '+idir+' --emit-complementary-info   --config '+config+' make -j -C firmware/build'    
 						try {
 							sh '/opt/coverity/analysis/bin/cov-import-scm --dir '+idir+' --scm git --filename-regex \${WORKSPACE}'
 						}
@@ -63,7 +63,7 @@ node {
     {
     stage('cleanup volume') {
         // Comment out this to keep the idir volume
-		sh 'docker volume rm '+volumeId
+		sh 'docker volume rm'+volumeName
 		}
     }
 }

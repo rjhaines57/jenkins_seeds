@@ -29,7 +29,7 @@ node {
         }
         stage('Analysis') {
             docker.withRegistry('','docker_credentials') {  		
-				docker.image(analysis_image).inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 ') {
+				docker.image(analysis_image).inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity') {
 					sh 'tar zxvf notepadpp.tgz && mv idir /opt/coverity/idirs'
 					sh '/opt/coverity/analysis/bin/cov-manage-emit --dir '+idir+' reset-host-name'
 					sh '/opt/coverity/analysis/bin/cov-analyze --dir '+idir+' --trial'
@@ -38,7 +38,7 @@ node {
         }
         stage('Commit') {
            withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
-                docker.image('cov-analysis:2018.03').inside(' --hostname \${BUILD_TAG} --network docker_coverity --mac-address 08:00:27:ee:25:b2  -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSWORD=\${COV_PASSWORD}') {
+                docker.image(analysis_image).inside(' --hostname \${BUILD_TAG} --network docker_coverity --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSWORD=\${COV_PASSWORD}') {
                     sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password \${COVERITY} --project NotePadPlusPlus --stream notepadpp'
                     sh '/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream notepadpp'
                 }

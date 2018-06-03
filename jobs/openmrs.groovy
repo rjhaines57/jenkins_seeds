@@ -4,45 +4,52 @@ pipelineJob('OpenMRS') {
       sandbox()
       script("""
 node {
-    def volumeId
- 
-    try {
+    def volumeName='\${BUILD_TAG}'
+    def analysis_image="\${DEFAULT_ANALYSIS_TAG}:\${DEFAULT_ANALYSIS_VERSION}"
+	def idir_base='/opt/coverity/idirs'
+	def idir=idir_base+'/idir'
+	def config=idir_base+'/coverity_config.xml'
     
-        stage('Clean directory')
+	try {
+    
+        stage('Copy autotriage data')
         {
-		copyArtifacts filter: 'auto_triage/openmrs.csv', fingerprintArtifacts: true, projectName: 'seed-job', selector: lastSuccessful()    
-        deleteDir()  
-         
+			copyArtifacts filter: 'auto_triage/openmrs.csv', fingerprintArtifacts: true, projectName: 'seed-job', selector: lastSuccessful()    
         }
         stage('Clone sources') {
-            git url: 'https://github.com/openmrs/openmrs-core.git'
+			// deleteDir()  
+			git url: 'https://github.com/openmrs/openmrs-core.git'
 			sh 'git checkout 9f12d2f6c1c8ebbaa51c996cb209528d2110ab03'
         }
         stage('Build (Java & Javascript)') {
       
-            docker.image('clittlej/sig-emea-ses:analysis-2018.03').withRun('--hostname \${BUILD_TAG} -v \${BUILD_TAG}:/opt/coverity') { c ->
+            docker.image(analysis_image).withRun('--hostname \${BUILD_TAG} -v \${BUILD_TAG}:/opt/coverity') { c ->
                 docker.image('maven:3.5.3-jdk-8').inside('--hostname \${BUILD_TAG} -e HOME=\${WORKSPACE} -v /var/jenkins_home/.m2:\${WORKSPACE}/.m2 -v \${BUILD_TAG}:/opt/coverity') { 
                     stage('Build'){
                         sh 'ls -al \${HOME}'
-                        sh '/opt/coverity/analysis/bin/cov-configure --config /opt/coverity/idirs/coverity_config.xml --java'
-                        sh '/opt/coverity/analysis/bin/cov-configure --config /opt/coverity/idirs/coverity_config.xml --javascript'                
-                        sh '/opt/coverity/analysis/bin/cov-build --dir /opt/coverity/idirs/idir  --config /opt/coverity/idirs/coverity_config.xml mvn -Duser.home=\${HOME} -DskipTests=true -Dmaven.compiler.forceJavacCompilerUse=true -Dlicense.skip=true clean install  '            
-                        sh '/opt/coverity/analysis/bin/cov-build --dir /opt/coverity/idirs/idir --config /opt/coverity/idirs/coverity_config.xml --no-command --fs-capture-search webapp/src'            
+                        sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --java'
+                        sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --javascript'                
+                        sh '/opt/coverity/analysis/bin/cov-build --dir '+idir+'  --config '+config+' mvn -Duser.home=\${HOME} -DskipTests=true -Dmaven.compiler.forceJavacCompilerUse=true -Dlicense.skip=true clean install  '            
+                        sh '/opt/coverity/analysis/bin/cov-build --dir '+idir+' --config '+config+' --no-command --fs-capture-search webapp/src'  
+                        try {
+                            sh '/opt/coverity/analysis/bin/cov-import-scm --dir '+idir+' --scm git --filename-regex \${WORKSPACE}'
+                        }
+                        catch (err)  { echo "cov-import-scm returned something unsavoury, moving on:"+err}						
                     }
                 }            
             }
         }
         
         stage('Analysis') {
-            docker.image('clittlej/sig-emea-ses:analysis-2018.03').inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 -v \${BUILD_TAG}/opt/coverity') {
-                sh '/opt/coverity/analysis/bin/cov-analyze --dir /opt/coverity/idirs/idir --trial --webapp-security-trial --disable-fb'
+            docker.image(analysis_image).inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 -v \${BUILD_TAG}/opt/coverity') {
+                sh '/opt/coverity/analysis/bin/cov-analyze --dir '+idir+' --trial --webapp-security-trial --disable-fb'
             }
         }
         stage('Commit') {
            withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
-                docker.image('clittlej/sig-emea-ses:analysis-2018.03').inside(' --hostname \${BUILD_TAG} --network docker_coverity --mac-address 08:00:27:ee:25:b2 -v \${BUILD_TAG}:/opt/coverity -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSPHRASE=\${COV_PASSPHRASE}') {
-                    sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password coverity --project OpenMRS --stream openmrs'
-                    sh '/opt/coverity/analysis/bin/cov-commit-defects --dir /opt/coverity/idirs/idir --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream openmrs'
+                docker.image(analysis_image).inside(' --hostname \${BUILD_TAG} --network docker_coverity --mac-address 08:00:27:ee:25:b2 -v \${BUILD_TAG}:/opt/coverity -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSWORD=\${COV_PASSWORD}') {
+                    sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password ${COVERITY_PASSWORD} --project OpenMRS --stream openmrs'
+                    sh '/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream openmrs'
                 }
             }
         }

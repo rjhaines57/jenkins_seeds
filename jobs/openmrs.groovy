@@ -22,22 +22,23 @@ node {
 			sh 'git checkout 9f12d2f6c1c8ebbaa51c996cb209528d2110ab03'
         }
         stage('Build (Java & Javascript)') {
-      
-            docker.image(analysis_image).withRun('--hostname \${BUILD_TAG} -v \${BUILD_TAG}:/opt/coverity') { c ->
-                docker.image('maven:3.5.3-jdk-8').inside('--hostname \${BUILD_TAG} -e HOME=\${WORKSPACE} -v /var/jenkins_home/.m2:\${WORKSPACE}/.m2 -v \${BUILD_TAG}:/opt/coverity') { 
-                    stage('Build'){
-                        sh 'ls -al \${HOME}'
-                        sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --java'
-                        sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --javascript'                
-                        sh '/opt/coverity/analysis/bin/cov-build --dir '+idir+'  --config '+config+' mvn -Duser.home=\${HOME} -DskipTests=true -Dmaven.compiler.forceJavacCompilerUse=true -Dlicense.skip=true clean install  '            
-                        sh '/opt/coverity/analysis/bin/cov-build --dir '+idir+' --config '+config+' --no-command --fs-capture-search webapp/src'  
-                        try {
-                            sh '/opt/coverity/analysis/bin/cov-import-scm --dir '+idir+' --scm git --filename-regex \${WORKSPACE}'
-                        }
-                        catch (err)  { echo "cov-import-scm returned something unsavoury, moving on:"+err}						
-                    }
-                }            
-            }
+            docker.withRegistry('','docker_credentials') {  
+				docker.image(analysis_image).withRun('--hostname \${BUILD_TAG} -v \${BUILD_TAG}:/opt/coverity') { c ->
+					docker.image('maven:3.5.3-jdk-8').inside('--hostname \${BUILD_TAG} -e HOME=\${WORKSPACE} -v /var/jenkins_home/.m2:\${WORKSPACE}/.m2 -v \${BUILD_TAG}:/opt/coverity') { 
+						stage('Build'){
+							sh 'ls -al \${HOME}'
+							sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --java'
+							sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --javascript'                
+							sh '/opt/coverity/analysis/bin/cov-build --dir '+idir+'  --config '+config+' mvn -Duser.home=\${HOME} -DskipTests=true -Dmaven.compiler.forceJavacCompilerUse=true -Dlicense.skip=true clean install  '            
+							sh '/opt/coverity/analysis/bin/cov-build --dir '+idir+' --config '+config+' --no-command --fs-capture-search webapp/src'  
+							try {
+								sh '/opt/coverity/analysis/bin/cov-import-scm --dir '+idir+' --scm git --filename-regex \${WORKSPACE}'
+							}
+							catch (err)  { echo "cov-import-scm returned something unsavoury, moving on:"+err}						
+						}
+					}            
+				}
+			}
         }
         
         stage('Analysis') {

@@ -20,7 +20,7 @@ node {
         }
         stage('Build (C++)') {
         docker.withRegistry('','docker_credentials') {
-           docker.image(analysis_image).withRun('--hostname \${BUILD_TAG} -v '+volumeName+':/opt/coverity') { 
+            docker.image(analysis_image).withRun('--hostname \${BUILD_TAG} -v '+volumeName+':/opt/coverity') { 
                     docker.image('gcc:5.5.0').inside('--hostname \${BUILD_TAG} -v '+volumeName+':/opt/coverity') { 
                         sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --gcc'
                         sh '/opt/coverity/analysis/bin/cov-build --dir '+idir+' --config '+config+' make -j'            
@@ -41,7 +41,7 @@ node {
         }
         stage('Commit') {
            withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
-                docker.image(analysis_image).inside('--network docker_coverity --hostname \${BUILD_TAG}  --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity/ -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSPHRASE=\${COV_PASSPHRASE}') {
+                docker.image(analysis_image).inside('--network docker_coverity --hostname \${BUILD_TAG}  --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity/ -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSWORD=\${COV_PASSWORD}') {
                     sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password \${COV_PASSWORD} --project Redis --stream redis'
                     sh '/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream redis'
                 }

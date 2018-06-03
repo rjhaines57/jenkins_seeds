@@ -30,7 +30,7 @@ node {
 				docker.image(analysis_image).withRun('--hostname \${BUILD_TAG}  -v '+volumeName+':/opt/coverity') { c ->
 					docker.image('webratio/ant').inside('--hostname \${BUILD_TAG}  -v '+volumeName+':/opt/coverity:ro -e JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8') { 
 						sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --java'
-						sh '/opt/coverity/analysis/bin/cov-build '+idir+'  --config '+config+' ant'     
+						sh '/opt/coverity/analysis/bin/cov-build --dir '+idir+'  --config '+config+' ant'     
 						try {
 							sh '/opt/coverity/analysis/bin/cov-import-scm --dir '+idir+' --scm git --filename-regex \${WORKSPACE}'
 						}
@@ -41,14 +41,14 @@ node {
         }
         stage('Analysis') {
             docker.image(analysis_image).inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 ') {
-                sh '/opt/coverity/analysis/bin/cov-analyze '+idir+' --trial'
+                sh '/opt/coverity/analysis/bin/cov-analyze --dir '+idir+' --trial'
             }
         }
         stage('Commit') {
            withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
                 docker.image(analysis_image).inside(' --hostname \${BUILD_TAG} --network docker_coverity --mac-address 08:00:27:ee:25:b2  -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSWORD=\${COV_PASSWORD}') {
                     sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password \${COVERITY} --project MegaMek --stream megamek'
-                    sh '/opt/coverity/analysis/bin/cov-commit-defects '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream megamek'
+                    sh '/opt/coverity/analysis/bin/cov-commit-defects --dir'+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream megamek'
                 }
             }
         }
@@ -61,7 +61,7 @@ node {
     {
     stage('cleanup volume') {
     // Delete volume
-    sh 'docker volume rm'+volumeName
+    sh 'docker volume rm '+volumeName
     }
     }
 }

@@ -29,7 +29,7 @@ node {
         }
         stage('Analysis') {
             docker.withRegistry('','docker_credentials') {  		
-				docker.image('cov-analysis:2018.03').inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 ') {
+				docker.image(analysis_image).inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 ') {
 					sh 'tar zxvf notepadpp.tgz && mv idir /opt/coverity/idirs'
 					sh '/opt/coverity/analysis/bin/cov-manage-emit '+idir+' reset-host-name'
 					sh '/opt/coverity/analysis/bin/cov-analyze '+idir+' --trial'

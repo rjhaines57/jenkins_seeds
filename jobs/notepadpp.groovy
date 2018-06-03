@@ -21,10 +21,11 @@ node {
             volumeId=sh(returnStdout: true, script: '/usr/bin/docker volume create').trim()
         }
         stage('retrieve idir') {
-
-            docker.image('clittlej/sig-emea-ses:data-2018.03').inside() { 
-                sh 'cp /idirs/notepadpp.tgz .'
-            }
+			docker.withRegistry('','docker_credentials') {  
+				docker.image('clittlej/sig-emea-ses:data-2018.03').inside() { 
+					sh 'cp /idirs/notepadpp.tgz .'
+				}
+			}
         }
         stage('Analysis') {
             docker.withRegistry('','docker_credentials') {  		
@@ -49,7 +50,7 @@ node {
     {
     stage('cleanup volume') {
     // Delete volume
-    sh 'docker volume rm'+volumeName
+    sh 'docker volume rm '+volumeName
     }
     }
 }

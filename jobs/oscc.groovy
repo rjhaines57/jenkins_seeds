@@ -63,7 +63,7 @@ node {
     {
     stage('cleanup volume') {
         // Comment out this to keep the idir volume
-		sh 'docker volume rm'+volumeName
+		sh 'docker volume rm '+volumeName
 		}
     }
 }

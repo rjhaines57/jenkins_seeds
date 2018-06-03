@@ -63,7 +63,7 @@ node {
     {
     stage('cleanup volume') {
 		// Delete volume
-		sh 'docker volume rm \${BUILD_TAG}'
+		sh 'docker volume rm '+volumeName
 		}
     }
 }

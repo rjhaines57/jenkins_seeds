@@ -99,9 +99,9 @@ The following is a walkthough of the OpenMRS pipeline docker job. There are some
 node {
     def volumeName='${BUILD_TAG}'
     def analysis_image="${DEFAULT_ANALYSIS_TAG}:${DEFAULT_ANALYSIS_VERSION}"
- 	  def idir_base='/opt/coverity/idirs'
-	  def idir=idir_base+'/idir'
-	  def config=idir_base+'/coverity_config.xml'
+    def idir_base='/opt/coverity/idirs'
+    def idir=idir_base+'/idir'
+    def config=idir_base+'/coverity_config.xml'
 ```
 The section above sets a number of variables that are used throughout the script, they are:
 - volumeName - By default this is set to the build tag, this means that the volume that contains the build tools and idir is unique for this build.  If you want to have a persistent idir then you will need to use something like ${JOB_NAME} instead
@@ -124,7 +124,7 @@ The whole pipeline is wrapped in a try catch block. Any exceptions will be caugh
 			sh 'git checkout 9f12d2f6c1c8ebbaa51c996cb209528d2110ab03'
   }
 ```
-The clone sources stage will download the repositiory and checkout a version. The reason for the checkout in this case is to choose a particularily bad version, removing the checkout will get the latest. Uncomment the "deleteDir()" to get the repository every time. Currently anything built with Maven will store it's repostory in the worspace directory so any invocation of deleteDir will also remove this
+The clone sources stage will download the repositiory and checkout a version. The reason for the checkout in this case is to choose a particularily bad version, removing the checkout will get the latest. Uncomment the "deleteDir()" to get the repository every time. Currently anything built with Maven will store it's .m2 repository in the workspace directory so any invocation of deleteDir will also remove this.
 
 ```
   stage('Build (Java & Javascript)') {

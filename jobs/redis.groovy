@@ -49,16 +49,17 @@ node {
         }
     }
     catch (err){
-      echo "Found error: "+err
+        echo "Caught Exception: "+err
     }
     finally
     {
-    stage('cleanup volume') {
+        stage('Cleanup volume') {
         // Comment out this to keep the idir volume
-		sh 'docker volume rm '+volumeName
+	    	sh 'docker volume rm '+volumeName
+      }
     }
-    }
-}	  """.stripIndent())      
+}	  
+	  """.stripIndent())      
     }
   }
 }

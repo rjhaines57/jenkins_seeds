@@ -3,6 +3,7 @@ pipelineJob('Jenkins') {
     cps {
       sandbox()
       script("""
+
 node {
     // Set volume Name to \${BUILD_TAG} for each build gives new volume and therefore clean
     // environment. Use \${JOB_NAME} for incremental builds
@@ -43,7 +44,7 @@ node {
         stage('Commit') {
            withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
                 docker.image(analysis_image).inside(' --hostname \${BUILD_TAG} --network docker_coverity --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSWORD=\${COV_PASSWORD}') {
-                    sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password \${COVERITY} --project Jenkins --stream jenkins'
+                    sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password \${COV_PASSWORD} --project Jenkins --stream jenkins'
                     sh '/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream jenkins'
                 }
             }
@@ -53,6 +54,9 @@ node {
     //    }
 		
     }
+    catch (err){
+        echo "Caught Exception: "+err
+    }
     finally
     {
         stage('cleanup volume') {
@@ -61,7 +65,8 @@ node {
         }
     }
 }
-      	  """.stripIndent())      
+      	  
+	  """.stripIndent())      
     }
   }
 }

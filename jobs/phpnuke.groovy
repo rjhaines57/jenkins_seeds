@@ -35,21 +35,24 @@ node {
         stage('Commit') {
            withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
                 docker.image(analysis_image).inside('--network docker_coverity --hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSWORD=\${COV_PASSWORD}') {
-                    sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password \${COVERITY} --project PHPNuke --stream phpnuke'
+                    sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password \${COV_PASSWORD} --project PHPNuke --stream phpnuke'
                     sh '/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream phpnuke'
                 }
             }
         }
     }
-	
+    catch (err){
+        echo "Caught Exception: "+err
+    }
     finally
     {
-    stage('cleanup volume') {
-        // Comment out the line below to keep the idir volume
-        sh 'docker volume rm '+volumeName
-    }
+        stage('cleanup volume') {
+            // Comment out the line below to keep the idir volume
+            sh 'docker volume rm '+volumeName
+        }
     }
 }
+
 	  """.stripIndent())      
     }
   }

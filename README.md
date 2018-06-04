@@ -1,5 +1,18 @@
 # jenkins_seeds
 
+## TL;DR
+
+### Current Projects
+
+- Megamek - Java ant build for quality
+- Redis - C/C++ quality - Quick to build 
+- OpenMRS - Monolithic Java Application - Security defects
+- Notepad++ - C++ quality
+- PHPNuke - PHP 
+- OSCC - C++ and MISRA
+- Jenkins - Java 
+
+
 ## Introduction
 
 This git hub repository contains seeds for prepopulating Connect Docker Demo Environment(CDDE) with jenkins jobs. Jobs are in the form of Jenkins DSL. The purpose of this is firstly to give a good demo environment and secondly to capture the command lines/best practices/tips and tricks for building an analysing different types of codebases. As this repository is linked closely to the CDDE all of the examples initially are based on linux and building within docker. There is the possiblity of expanding this to non docker builds but it shouldn't be difficult to translate what happens in one to the other.
@@ -211,6 +224,40 @@ The Coverity Results stage will retrieve results from the server and produce a p
 
 The final stage will clean up the docker volume. Remove this sh command to keep the build log and intermediate directory volume. Note that a subsequent run will create a new idir as the volume is named after the build tag which has the build number in it.
 
+## Other tips and tricks
 
+### Helper container
 
+Checkout the oscc example for an example of a tool container made on the fly. This is the case where we needed an arduino toolkit for the build. There was no good images available for this so one is created for this pipeline:
+```
+        stage('Create helper image')
+        {
+            sh 'echo "FROM gcc:5.5.0" > Dockerfile'
+            sh 'echo "RUN apt-get update && apt-get install -y arduino-core build-essential cmake" >> Dockerfile'
+            docker.build("oscc-build:latest")
+        }
+```
+In this case the Dockerfile was really simple so it was straight forward to output it and create a new container which is then used in the build step.
 
+### Use of the data container
+
+Github isn't really the place to store large files (nor is docker hub for that matter but never mind). For code bases where a prebuilt intermediate directory is needed to add windows and macos targets then the data container can be used:
+```
+        stage('Retrieve Intermediate Directory') {
+		docker.withRegistry('','docker_credentials') {  
+			docker.image('${DEFAULT_ANALYSIS_TAG}:data-2018.03').inside() { 
+				sh 'cp /idirs/notepadpp.tgz .'
+			}
+		}
+        }
+        stage('Analysis') {
+            docker.withRegistry('','docker_credentials') {  		
+                docker.image(analysis_image).inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity') {
+					sh 'tar zxvf notepadpp.tgz && mv idir /opt/coverity/idirs'
+					sh '/opt/coverity/analysis/bin/cov-manage-emit --dir '+idir+' reset-host-name'
+					sh '/opt/coverity/analysis/bin/cov-analyze --dir '+idir+' --trial'
+				}
+			}
+        }
+```
+In the first stage we start the data container and then copy the intermediate directory to the project workspace. In the second stage we decompress it and copy it to the idir, reset the host name and then analyze as usual.

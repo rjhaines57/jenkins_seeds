@@ -1,5 +1,18 @@
 # jenkins_seeds
 
+## TL;DR
+
+### Current Projects
+
+- Megamek - Java ant build for quality
+- Redis - C/C++ quality - Quick to build 
+- OpenMRS - Monolithic Java Application - Security defects
+- Notepad++ - C++ quality
+- PHPNuke - PHP 
+- OSCC - C++ and MISRA
+- Jenkins - Java 
+
+
 ## Introduction
 
 This git hub repository contains seeds for prepopulating Connect Docker Demo Environment(CDDE) with jenkins jobs. Jobs are in the form of Jenkins DSL. The purpose of this is firstly to give a good demo environment and secondly to capture the command lines/best practices/tips and tricks for building an analysing different types of codebases. As this repository is linked closely to the CDDE all of the examples initially are based on linux and building within docker. There is the possiblity of expanding this to non docker builds but it shouldn't be difficult to translate what happens in one to the other.
@@ -99,12 +112,12 @@ The following is a walkthough of the OpenMRS pipeline docker job. There are some
 node {
     def volumeName='${BUILD_TAG}'
     def analysis_image="${DEFAULT_ANALYSIS_TAG}:${DEFAULT_ANALYSIS_VERSION}"
- 	  def idir_base='/opt/coverity/idirs'
-	  def idir=idir_base+'/idir'
-	  def config=idir_base+'/coverity_config.xml'
+    def idir_base='/opt/coverity/idirs'
+    def idir=idir_base+'/idir'
+    def config=idir_base+'/coverity_config.xml'
 ```
 The section above sets a number of variables that are used throughout the script, they are:
-- volumeName - By default this is set to the build tag, this means that the volume that contains the build tools and idir is unique for this build. 
+- volumeName - By default this is set to the build tag, this means that the volume that contains the build tools and idir is unique for this build.  If you want to have a persistent idir then you will need to use something like ${JOB_NAME} instead
 - analysis_image - This defines the analysis image and version. This set to a default in the CDDE, you can hard code these if you need to specify a particular analysis version
 - idir_base, idir and config - These configure where the config and idir sit in the volume
 
@@ -115,7 +128,7 @@ try {
   	copyArtifacts filter: 'auto_triage/openmrs.csv', fingerprintArtifacts: true, projectName: 'seed-job', selector: lastSuccessful()    
   }
 ```
-The whole pipeline is wrapped in a try catch block. Any exceptions will be caught and dumped and the finally block will clean up the volume used. This first stage copies the auto triage data. Please see the section above on auto triage.
+The whole pipeline is wrapped in a try catch block. Any exceptions will be caught and dumped and the finally block will clean up the volume used. The 'stage' keyword defines a new build stage, when you see the result of the run it will show the different stages, it may be possible in some cases to run stages in parallel but for Coverity it will be linear. In this case the first stage copies the auto triage data from the last successfull seed-job. See the auto triage section above for more details.
 
 ```
   stage('Clone sources') {
@@ -124,7 +137,7 @@ The whole pipeline is wrapped in a try catch block. Any exceptions will be caugh
 			sh 'git checkout 9f12d2f6c1c8ebbaa51c996cb209528d2110ab03'
   }
 ```
-The clone sources stage will download the repositiory and checkout a version. The reason for the checkout in this case is to choose a particularily bad version, removing the checkout will get the latest. Uncomment the "deleteDir()" to get the repository every time. Currently anything built with Maven will store it's repostory in the worspace directory so any invocation of deleteDir will also remove this
+The clone sources stage will download the repositiory and checkout a version. The reason for the checkout in this case is to choose a particularily bad version, removing the checkout will get the latest. Uncomment the "deleteDir()" to get the repository every time. Currently anything built with Maven will store it's .m2 repository in the workspace directory so any invocation of deleteDir will also remove this.
 
 ```
   stage('Build (Java & Javascript)') {
@@ -146,11 +159,32 @@ The clone sources stage will download the repositiory and checkout a version. Th
 			}
    }
 ```
-Wow! This looks fun.
 
+Wow! This looks fun. The 'sh' commands in the middle should be self explanatory for a Coverity build with Maven so lets take the first part line by line:
 
+```
+    docker.withRegistry('','docker_credentials') {  
+``` 
 
+This logins into the Docker Hub. For security/legal reasons some of the docker images are stored in private repositories. The login will allow the image to be pulled in the next line. **Note** I've not wrapped every stage with this as once it is pulled then it should be available locally and the login is not required. Why do I have to do this when I had to login already to run the CDDE? That was from outside the docker environment, now we are inside it we need to do it again. It just happens we are running these docker commands from inside a docker environment but they could easily be running from a normal jenkins instance.
 
+```
+	docker.image(analysis_image).withRun('--hostname ${BUILD_TAG} -v '+volumeName+':/opt/coverity') {
+```
+
+This starts an analysis container based on the analysis_image. The actual build will take place in a different container but we need this container to get access to the coverity tools. The '-v' section specifies the use of a volume mounted at directory /opt/coverity. When the volume is created, all the coverity tools will be copied/made visible/wished into being by pixies from the analysis container into the volume. This is the mechanism by which the tools are made available in the build container. The 'withRun' directive simply starts the container
+
+```
+      docker.image('maven:3.5.3-jdk-8').inside('--hostname ${BUILD_TAG} -e HOME=${WORKSPACE} -v '+volumeName+':/opt/coverity') { 
+```
+This starts a maven container based on the image 'maven:3.5.3-jdk-8'. Most of the jobs in the repository use a tool container for doing the build. This allows flexiblity to use any container necessary to build the code base without having to deal with the mess of adding/maintaining the tools in a generic build/analysis container. It's a thing of beauty. Note the same "-v" option now mounts our previously created volume into this container. What you will not see in the job but what happens automatically underneath is that the docker pipeline plugin will mount the workspace as a volume and set all the usual environment variables so to all intents at this point you are setting in the job workspace ready with the right tools including coverity, ready to do some work. Finally for this stage:
+```
+	try {
+		sh '/opt/coverity/analysis/bin/cov-import-scm --dir '+idir+' --scm git --filename-regex ${WORKSPACE}'
+	}
+	catch (err)  { echo "cov-import-scm returned something unsavoury, moving on:"+err}						
+```
+For some reason this sometimes gives a failed return code, it's been wrapped in a try catch block to stop it failing the pipeline. Onto the next stage:
 ```
         stage('Analysis') {
             docker.image(analysis_image).inside('--hostname ${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity ') {
@@ -158,21 +192,24 @@ Wow! This looks fun.
             }
         }
 ```
+This uses the same analysis image however it will start a new container. Note that the commands are now being run in this container rather than a tool container. The volume is mounted again, this may appear unusual as the tools are actually in this container however the idir is in the volume. In the future this might change to move the idir back into the workspace.
+
 ```
-        stage('Commit') {
-           withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
-                docker.image(analysis_image).inside(' --hostname ${BUILD_TAG} --network docker_coverity --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=${COV_USER} -e COV_PASSWORD=${COV_PASSWORD}') {
-                    sh 'createProjectAndStream --host ${COVERITY_HOST} --user ${COV_USER} --password ${COV_PASSWORD} --project OpenMRS --stream openmrs'
-                    sh '/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --strip-path ${WORKSPACE} --host ${COVERITY_HOST} --port ${COVERITY_PORT} --stream openmrs'
+    stage('Commit') {
+        withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
+            docker.image(analysis_image).inside(' --hostname ${BUILD_TAG} --network docker_coverity --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=${COV_USER} -e COV_PASSWORD=${COV_PASSWORD}') {
+            sh 'createProjectAndStream --host ${COVERITY_HOST} --user ${COV_USER} --password ${COV_PASSWORD} --project OpenMRS --stream openmrs'
+            sh '/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --strip-path ${WORKSPACE} --host ${COVERITY_HOST} --port ${COVERITY_PORT} --stream openmrs'
                 }
             }
         }
 ```
+The commit stage creates a project and stream and then commits to coverity. The createProjectAndStream script is supplied by Kevin Matthews and is part of his suite of scripts used for coverity deployments. Note the --network option here, this is the first time that any of our analysis containers or tools containers have need to access the internal network, that is they may have communicated with the outside world but not with other docker containers in the CDDE. The name of the network is hard coded in the docker-compose.yml file, should really be dynamic but this works for now :( 
+
 ```
-	//	stage('Coverity Results') {
-    //        coverityResults connectInstance: 'Test Server', connectView: 'Outstanding Security Risks', projectId: 'OpenMRS', unstable:true
-    //    }
-		
+        stage('Coverity Results') {
+        coverityResults connectInstance: 'Test Server', connectView: 'Outstanding Security Risks', projectId: 'OpenMRS', unstable:true
+        }
     }
     finally
     {
@@ -183,13 +220,44 @@ Wow! This looks fun.
     }
 }
 ```
+The Coverity Results stage will retrieve results from the server and produce a pretty graph. It depends on a coverity view to get it's information. Note: This is typically disable initially as creating views in connect is not available via the API so a sensible default for this is not available, also views are not created until the first login so if the user has never logged in before, which is the case for this environment when initially installed, this will fail. 
 
+The final stage will clean up the docker volume. Remove this sh command to keep the build log and intermediate directory volume. Note that a subsequent run will create a new idir as the volume is named after the build tag which has the build number in it.
 
+## Other tips and tricks
 
+### Helper container
 
-
-
-If you copy a pipeline script from an existing jenkins job or a file then please make sure that you escape any variable usage, for example:
+Checkout the oscc example for an example of a tool container made on the fly. This is the case where we needed an arduino toolkit for the build. There was no good images available for this so one is created for this pipeline:
 ```
-\${BUILD_TAG}
+        stage('Create helper image')
+        {
+            sh 'echo "FROM gcc:5.5.0" > Dockerfile'
+            sh 'echo "RUN apt-get update && apt-get install -y arduino-core build-essential cmake" >> Dockerfile'
+            docker.build("oscc-build:latest")
+        }
 ```
+In this case the Dockerfile was really simple so it was straight forward to output it and create a new container which is then used in the build step.
+
+### Use of the data container
+
+Github isn't really the place to store large files (nor is docker hub for that matter but never mind). For code bases where a prebuilt intermediate directory is needed to add windows and macos targets then the data container can be used:
+```
+        stage('Retrieve Intermediate Directory') {
+		docker.withRegistry('','docker_credentials') {  
+			docker.image('${DEFAULT_ANALYSIS_TAG}:data-2018.03').inside() { 
+				sh 'cp /idirs/notepadpp.tgz .'
+			}
+		}
+        }
+        stage('Analysis') {
+            docker.withRegistry('','docker_credentials') {  		
+                docker.image(analysis_image).inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity') {
+					sh 'tar zxvf notepadpp.tgz && mv idir /opt/coverity/idirs'
+					sh '/opt/coverity/analysis/bin/cov-manage-emit --dir '+idir+' reset-host-name'
+					sh '/opt/coverity/analysis/bin/cov-analyze --dir '+idir+' --trial'
+				}
+			}
+        }
+```
+In the first stage we start the data container and then copy the intermediate directory to the project workspace. In the second stage we decompress it and copy it to the idir, reset the host name and then analyze as usual.

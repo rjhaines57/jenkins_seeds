@@ -3,6 +3,7 @@ pipelineJob('oscc') {
     cps {
       sandbox()
       script("""
+
 node {
     // Set volume Name to \${BUILD_TAG} for each build gives new volume and therefore clean
     // environment. Use \${JOB_NAME} for incremental builds
@@ -53,12 +54,14 @@ node {
                 docker.image(analysis_image).inside('--network docker_coverity --hostname \${BUILD_TAG}  --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSWORD=\${COV_PASSWORD}') {
                     sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password \${COV_PASSWORD} --project OSCC --stream oscc'
                     sh '/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream oscc'
+                    sh 'cp '+idir+'/output/HIS_MISRA_c2012_report.html \$WORKSPACE'
+                    archiveArtifacts artifacts: 'HIS_MISRA_c2012_report.html'
                 }
             }
         }
     }
     catch (err){
-      echo "Caught Exception: "+err
+      error "Caught Exception: "+err
     }
     finally
     {

@@ -18,6 +18,10 @@ node {
           git url: 'https://github.com/PolySync/oscc.git'
           sh 'git checkout c08ae9982941842679b6b21847211c55d6db500c'
         }
+        stage('Copy autotriage data')
+        {
+			copyArtifacts filter: 'config/HIS_all_MISRA_c2012.config', fingerprintArtifacts: false, projectName: 'seed-job', selector: lastSuccessful()    
+        }		
         stage('Create helper image')
         {
             sh 'echo "FROM gcc:5.5.0" > Dockerfile'
@@ -41,7 +45,7 @@ node {
         }
         stage('Analysis') {
             docker.image(analysis_image).inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity') {
-                sh '/opt/coverity/analysis/bin/cov-analyze --dir '+idir+' --trial --misra-config /opt/coverity/analysis/config/MISRA/MISRA_cpp2008_7.config'
+                sh '/opt/coverity/analysis/bin/cov-analyze --dir '+idir+' --trial --coding-standard-config config/HIS_all_MISRA_c2012.config'
             }
         }
         stage('Commit') {

@@ -59,6 +59,11 @@ node {
                 }
             }
         }
+		stage('Publish HTML')
+		{
+			publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: '.', reportFiles: 'HIS_MISRA_c2012_report.html', reportName: 'HIS Report', reportTitles: ''])
+		
+		}
     }
     catch (err){
       error "Caught Exception: "+err

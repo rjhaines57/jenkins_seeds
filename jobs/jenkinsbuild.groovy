@@ -1,5 +1,14 @@
 pipelineJob('Jenkins') {
-  definition {
+   logRotator {
+        numToKeep(10)
+        artifactNumToKeep(1)
+   }
+   
+   definition {
+    parameters {
+        stringParam('Commit', 'LATEST', 'Which commit do you want to build?')
+		stringParam('Backdate', 'NONE', 'Do you wish to backdate this commit (Format YYYYMMDD)?')
+    }
     cps {
       sandbox()
       script("""

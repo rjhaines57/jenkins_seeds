@@ -1,5 +1,15 @@
 pipelineJob('megamek') {
-  definition {
+  description('MegaMek is a networked Java clone of BattleTech, a turn-based sci-fi boardgame for 2+ players. Fight using giant robots, tanks, and/or infantry on a hex-based map. http://www.megamek.org')
+   logRotator {
+        numToKeep(10)
+        artifactNumToKeep(1)
+   }
+   definition {
+    parameters {
+        stringParam('Commit', '63ee78c71bd33fd39a71dd908efdc0c80a2d18f7', 'Which commit do you want to build?')
+		stringParam('Backdate', 'NONE', 'Do you wish to backdate this commit (Format YYYYMMDD)?')
+    }
+  
     cps {
       sandbox()
       script("""
@@ -15,7 +25,10 @@ node {
     try {
         stage('Clone sources') {
             git  branch: 'rel-0-36-0', url: 'https://github.com/MegaMek/megamek.git'
-			sh 'git checkout 63ee78c71bd33fd39a71dd908efdc0c80a2d18f7'
+			print "["+commit+"]"
+			if (!commit.contains("LATEST")) {
+			 sh 'git checkout '+commit   
+			}
         }
         stage('Build (Java)') {
             docker.withRegistry('','docker_credentials') {        
@@ -36,7 +49,13 @@ node {
            withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
                 docker.image(analysis_image).inside(' --hostname \${BUILD_TAG} --network docker_coverity --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSWORD=\${COV_PASSWORD}') {
                     sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password \${COV_PASSWORD} --project MegaMek --stream megamek'
-                    sh '/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream megamek'
+					def commitCommand='/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream megamek'
+                    if (!backdate.contains("NONE"))
+                    {
+                        commitCommand=commitCommand+" --backdate "+backdate            
+                    }
+                    sh commitCommand 
+
                 }
             }
         }

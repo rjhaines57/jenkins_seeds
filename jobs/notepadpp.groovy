@@ -1,5 +1,10 @@
 pipelineJob('NotePadPlusPlus') {
-  definition {
+   description('Notepad++ official repository https://notepad-plus-plus.org/')
+   logRotator {
+        numToKeep(10)
+        artifactNumToKeep(1)
+   }
+   definition {
     parameters {
         stringParam('Commit', 'LATEST', 'Which commit do you want to build?')
 		stringParam('Backdate', 'NONE', 'Do you wish to backdate this commit (Format YYYYMMDD)?')

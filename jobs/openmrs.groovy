@@ -1,5 +1,14 @@
 pipelineJob('OpenMRS') {
-  definition {
+  description('Open source Health IT by and for the entire planet, starting with the developing world.')
+   logRotator {
+        numToKeep(10)
+        artifactNumToKeep(1)
+   }
+   definition {
+    parameters {
+        stringParam('Commit', '9f12d2f6c1c8ebbaa51c996cb209528d2110ab03', 'Which commit do you want to build?')
+		stringParam('Backdate', 'NONE', 'Do you wish to backdate this commit (Format YYYYMMDD)?')
+    }
     cps {
       sandbox()
       script("""
@@ -19,7 +28,11 @@ node {
         stage('Clone sources') {
 			// deleteDir()  
 			git url: 'https://github.com/openmrs/openmrs-core.git'
-			sh 'git checkout 9f12d2f6c1c8ebbaa51c996cb209528d2110ab03'
+			print "["+commit+"]"
+			if (!commit.contains("LATEST"))
+			{
+			 sh 'git checkout '+commit   
+			}
         }
         stage('Build (Java & Javascript)') {
             docker.withRegistry('','docker_credentials') {  
@@ -50,7 +63,13 @@ node {
            withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
                 docker.image(analysis_image).inside(' --hostname \${BUILD_TAG} --network docker_coverity --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSWORD=\${COV_PASSWORD}') {
                     sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password \${COV_PASSWORD} --project OpenMRS --stream openmrs'
-                    sh '/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream openmrs'
+					def commitCommand='/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream openmrs'
+                    if (!backdate.contains("NONE"))
+                    {
+                        commitCommand=commitCommand+" --backdate "+backdate            
+                    }
+                    sh commitCommand 
+
                 }
             }
         }

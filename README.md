@@ -239,25 +239,14 @@ Checkout the oscc example for an example of a tool container made on the fly. Th
 ```
 In this case the Dockerfile was really simple so it was straight forward to output it and create a new container which is then used in the build step.
 
-### Use of the data container
+### Use of the data container (DEPRECATED)
+Replaced with using a windows slave
 
-Github isn't really the place to store large files (nor is docker hub for that matter but never mind). For code bases where a prebuilt intermediate directory is needed to add windows and macos targets then the data container can be used:
-```
-        stage('Retrieve Intermediate Directory') {
-		docker.withRegistry('','docker_credentials') {  
-			docker.image('${DEFAULT_ANALYSIS_TAG}:data-2018.03').inside() { 
-				sh 'cp /idirs/notepadpp.tgz .'
-			}
-		}
-        }
-        stage('Analysis') {
-            docker.withRegistry('','docker_credentials') {  		
-                docker.image(analysis_image).inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity') {
-					sh 'tar zxvf notepadpp.tgz && mv idir /opt/coverity/idirs'
-					sh '/opt/coverity/analysis/bin/cov-manage-emit --dir '+idir+' reset-host-name'
-					sh '/opt/coverity/analysis/bin/cov-analyze --dir '+idir+' --trial'
-				}
-			}
-        }
-```
-In the first stage we start the data container and then copy the intermediate directory to the project workspace. In the second stage we decompress it and copy it to the idir, reset the host name and then analyze as usual.
+### Using a windows slave
+
+Github isn't really the place to store large files (nor is docker hub for that matter but never mind). For building jobs which are not native to linux, the first version of the CDDE stored an intermediate directory which could then be used later for analysis. Clearly the problem here was keeping this up to date and also storing a large object in the git repo. To get results of windows builds, this has instead moved simply to allow jenkins jobs to be built on a windows slave. The main disadvantage of this is that the builds are not done in docker and the installed version in windows must be the same as that used in the demo environment. 
+
+To set this up you must run a slave on windows and to make life a lot simpler, this should be done from a Visual Studio Developer command prompt. Full instructions are in the CDDE documentation but the key thing is that both msbuild and the coverity tools should be in the path when the slave is started.
+
+The job itself will download the repo on linux, stash it, unstash it on the slave and then run the build and then do the analyze and commit back in linux using docker. 
+

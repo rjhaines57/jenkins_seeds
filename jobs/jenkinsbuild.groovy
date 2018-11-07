@@ -1,4 +1,6 @@
 pipelineJob('Jenkins') {
+	description("Jenkins automation server https://jenkins.io/")
+
    logRotator {
         numToKeep(10)
         artifactNumToKeep(1)
@@ -21,15 +23,23 @@ node {
 	def idir_base='/opt/coverity/idirs'
 	def idir=idir_base+'/idir'
 	def config=idir_base+'/coverity_config.xml'
+    def backdate="${Backdate}"
+    def commit="${Commit}"
+
     try {
         stage('Clone sources') {
 		 //  deleteDir()    
             git url: 'https://github.com/jenkinsci/jenkins.git'
+			print "["+commit+"]"
+			if (!commit.contains("LATEST"))
+			{
+			 sh 'git checkout '+commit   
+			}
 		}
         stage('Build (Java & Javascript)') {
             docker.withRegistry('','docker_credentials') {  
 				docker.image(analysis_image).withRun('--hostname \${BUILD_TAG} -v '+volumeName+':/opt/coverity') { c ->
-					docker.image('maven:3.5.3-jdk-8').inside('--hostname \${BUILD_TAG} -e HOME=\${WORKSPACE} -v '+volumeName+':/opt/coverity') { 
+					docker.image('maven:3.6.0-jdk-8').inside('--hostname \${BUILD_TAG} -e HOME=\${WORKSPACE} -v '+volumeName+':/opt/coverity') { 
 						stage('Build'){
 							sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --java'
 							sh '/opt/coverity/analysis/bin/cov-configure --config '+config+' --javascript'   
@@ -54,17 +64,22 @@ node {
            withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
                 docker.image(analysis_image).inside(' --hostname \${BUILD_TAG} --network docker_coverity --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSWORD=\${COV_PASSWORD}') {
                     sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password \${COV_PASSWORD} --project Jenkins --stream jenkins'
-                    sh '/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream jenkins'
+					def commitCommand='/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream jenkins'
+                    if (!backdate.contains("NONE"))
+                    {
+                        commitCommand=commitCommand+" --backdate "+backdate            
+                    }
+                    sh commitCommand 
                 }
             }
         }
-	//	stage('Coverity Results') {
-    //        coverityResults connectInstance: 'Test Server', connectView: 'Outstanding Security Risks', projectId: 'OpenMRS', unstable:true
-    //    }
+		stage('Coverity Results') {
+            coverityResults connectInstance: 'Test Server', connectView: 'Outstanding Security Risks', projectId: 'Jenkins', unstable:true
+        }
 		
     }
     catch (err){
-        echo "Caught Exception: "+err
+        error "Caught Exception: "+err
     }
     finally
     {

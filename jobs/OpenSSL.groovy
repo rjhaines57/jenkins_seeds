@@ -1,5 +1,5 @@
 pipelineJob('OpenSSL') {
-   description('OpenSSL')
+   description('TLS/SSL and crypto library https://www.openssl.org')
    logRotator {
         numToKeep(10)
         artifactNumToKeep(1)

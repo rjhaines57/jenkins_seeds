@@ -21,8 +21,8 @@ node {
 	def idir_base='/opt/coverity/idirs'
 	def idir=idir_base+'/idir'
 	def config=idir_base+'/coverity_config.xml'
-    def backdate="${Backdate}"
-    def commit="${Commit}"
+    def backdate="\${Backdate}"
+    def commit="\${Commit}"
 
 	
     try {

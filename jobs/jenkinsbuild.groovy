@@ -73,9 +73,9 @@ node {
                 }
             }
         }
-		stage('Coverity Results') {
-            coverityResults connectInstance: 'Test Server', connectView: 'Outstanding Security Risks', projectId: 'Jenkins', unstable:true
-        }
+	//	stage('Coverity Results') {
+    //         coverityResults connectInstance: 'Test Server', connectView: 'Outstanding Security Risks', projectId: 'Jenkins', unstable:true
+    //    }
 		
     }
     catch (err){

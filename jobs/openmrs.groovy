@@ -30,7 +30,8 @@ node {
         }
         stage('Clone sources') {
 			// deleteDir()  
-			git url: 'https://github.com/openmrs/openmrs-core.git'
+			// src_repo:https://github.com/openmrs/openmrs-core.git
+			git url: 'ssh://git@cov-git/home/git/openmrs-core.git'
 			print "["+commit+"]"
 			if (!commit.contains("LATEST"))
 			{

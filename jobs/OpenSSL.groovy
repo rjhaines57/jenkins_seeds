@@ -9,6 +9,8 @@ pipelineJob('OpenSSL') {
     parameters {
         stringParam('Commit', 'LATEST', 'Which commit do you want to build?')
 		stringParam('Backdate', 'NONE', 'Do you wish to backdate this commit (Format YYYYMMDD)?')
+		stringParam('AnalysisVersion', '${DEFAULT_ANALYSIS_VERSION}', 'Set the analysis version or use "DEFAULT" to use the default set in DEFAULT_ANALYSIS_VERSION')
+
     }
   
     cps {

@@ -27,7 +27,7 @@ node {
     try {
         stage('Clone sources') {
 			//deleteDir()    
-			// src_repo:https://github.com/antirez/redis.git 
+			// src_repo:https://github.com/antirez/redis.git
 			git branch: 'unstable', url: 'ssh://git@cov-git/home/git/redis.git'
 			print "["+commit+"]"
 			if (!commit.contains("LATEST"))

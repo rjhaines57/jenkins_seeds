@@ -59,27 +59,50 @@ node {
 				}
 			}
         }
-        stage('Analysis') {
+        
+        parallel security : {stage('Analysis Security') {
             docker.image(analysis_image).inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity') {
-                sh '/opt/coverity/analysis/bin/cov-analyze --dir '+idir+' --trial --coding-standard-config config/HIS_all_MISRA_c2012.config'
+                sh '/opt/coverity/analysis/bin/cov-analyze --dir '+idir+' -all --output-tag security'
             }
-        }
-        stage('Commit') {
-           withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
-                docker.image(analysis_image).inside('--network docker_coverity --hostname \${BUILD_TAG}  --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity -e HOME=/opt/coverity/idirs -w /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSWORD=\${COV_PASSWORD}') {
-                    sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password \${COV_PASSWORD} --project OSCC --stream oscc'
-					def commitCommand='/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream oscc'
-                    if (!backdate.contains("NONE"))
-                    {
-                        commitCommand=commitCommand+" --backdate "+backdate            
-                    }
-                    sh commitCommand 
+        }},
+        misra:{stage('Analysis Misra') {
+            docker.image(analysis_image).inside('--hostname \${BUILD_TAG} --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity') {
+                sh '/opt/coverity/analysis/bin/cov-analyze --dir '+idir+' --coding-standard-config config/HIS_all_MISRA_c2012.config --disable-default --output-tag misra'
+            }
+        }}
+        
+        stage('Commit Security') {
+                withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
+                    docker.image(analysis_image).inside('--network docker_coverity --hostname \${BUILD_TAG}  --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity -e HOME=/opt/coverity/idirs -w  /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSWORD=\${COV_PASSWORD}') {
+                        sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password \${COV_PASSWORD} --project OSCC --stream oscc_security'
+                        def commitCommand='/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream oscc_security --output-tag security'
+                        if (!backdate.contains("NONE"))
+                        {
+                            commitCommand=commitCommand+" --backdate "+backdate            
+                        }
+                        sh commitCommand 
 
-                    sh 'cp '+idir+'/output/HIS_MISRA_c2012_report.html \$WORKSPACE'
-                    archiveArtifacts artifacts: 'HIS_MISRA_c2012_report.html'
+                    }
                 }
             }
-        }
+        
+            stage('Commit Misra') {
+                withCoverityEnv(coverityToolName: 'default', connectInstance: 'Test Server') { 
+                    docker.image(analysis_image).inside('--network docker_coverity --hostname \${BUILD_TAG}  --mac-address 08:00:27:ee:25:b2 -v '+volumeName+':/opt/coverity -e HOME=/opt/coverity/idirs -w  /opt/coverity/idirs -e COV_USER=\${COV_USER} -e COV_PASSWORD=\${COV_PASSWORD}') {
+                        sh 'createProjectAndStream --host \${COVERITY_HOST} --user \${COV_USER} --password \${COV_PASSWORD} --project OSCC --stream oscc_misra'
+                        def commitCommand='/opt/coverity/analysis/bin/cov-commit-defects --dir '+idir+' --strip-path \${WORKSPACE} --host \${COVERITY_HOST} --port \${COVERITY_PORT} --stream oscc_misra --output-tag misra'
+                        if (!backdate.contains("NONE"))
+                        {
+                            commitCommand=commitCommand+" --backdate "+backdate            
+                        }
+                        sh commitCommand 
+
+                        sh 'cp '+idir+'/outputmisra/HIS_MISRA_c2012_report.html \$WORKSPACE'
+                        archiveArtifacts artifacts: 'HIS_MISRA_c2012_report.html'
+                    }
+                }
+            }
+        
 		stage('Publish HTML')
 		{
 			publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: '.', reportFiles: 'HIS_MISRA_c2012_report.html', reportName: 'HIS Report', reportTitles: ''])

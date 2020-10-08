@@ -12,14 +12,15 @@ pipelineJob('oscc') {
    cps {
       sandbox()
       script("""
-
 node {
     // Set volume Name to \${BUILD_TAG} for each build gives new volume and therefore clean
     // environment. Use \${JOB_NAME} for incremental builds
     def volumeName='\${BUILD_TAG}'
     def analysis_image="\${DEFAULT_ANALYSIS_TAG}:\${DEFAULT_ANALYSIS_VERSION}"
-	def idir_base='/opt/coverity/idirs'
+	def idir_base='.'
 	def idir=idir_base+'/idir'
+	
+	
 	def config=idir_base+'/coverity_config.xml'
     def backdate="\${Backdate}"
     def commit="\${Commit}"
@@ -27,7 +28,7 @@ node {
 	
     try {
         stage('Clone sources') {
-          //deleteDir()    //Uncomment this to make a clean build every time
+      //   deleteDir()    //Uncomment this to make a clean build every time
 	  // src_repo:https://github.com/PolySync/oscc.git
           git url: 'ssh://git@cov-git/home/git/oscc.git'
 		  print "["+commit+"]"
@@ -104,14 +105,13 @@ node {
                 }
             }
         
-		stage('Publish HTML')
-		{
-			publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: '.', reportFiles: 'HIS_MISRA_c2012_report.html', reportName: 'HIS Report', reportTitles: ''])
-		
-		}
-    stage('Coverity Results') {
-         coverityResults connectInstance: 'Test Server', connectView: 'OSCC_CI_View', projectId: 'OSCC', unstable:true
-    }		
+   stage('Publish HTML')
+   {
+	publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: '.', reportFiles: 'HIS_MISRA_c2012_report.html', reportName: 'HIS Report', reportTitles: ''])
+    }
+   // stage('Coverity Results') {
+   //      coverityResults connectInstance: 'Test Server', connectView: 'OSCC_CI_View', projectId: 'OSCC', unstable:true
+   // }		
 		
     }
     catch (err){
@@ -125,7 +125,7 @@ node {
 		}
     }
 }
-	  """.stripIndent())      
+	    """.stripIndent())      
     }
   }
 }

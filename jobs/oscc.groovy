@@ -27,8 +27,9 @@ node {
 	
     try {
         stage('Clone sources') {
-          deleteDir()    
-          git url: 'https://github.com/PolySync/oscc.git'
+          //deleteDir()    //Uncomment this to make a clean build every time
+	  // src_repo:https://github.com/PolySync/oscc.git
+          git url: 'ssh://git@cov-git/home/git/oscc.git'
 		  print "["+commit+"]"
 		  if (!commit.contains("LATEST")) {
 			 sh 'git checkout '+commit   
@@ -108,6 +109,10 @@ node {
 			publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: '.', reportFiles: 'HIS_MISRA_c2012_report.html', reportName: 'HIS Report', reportTitles: ''])
 		
 		}
+    stage('Coverity Results') {
+         coverityResults connectInstance: 'Test Server', connectView: 'OSCC_CI_View', projectId: 'OSCC', unstable:true
+    }		
+		
     }
     catch (err){
       error "Caught Exception: "+err
